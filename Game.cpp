@@ -88,25 +88,28 @@ void Game::CreateRootSigAndPipelineState()
 	}
 
 	// Input layout
-	const unsigned int inputElementCount = 2;
+	const unsigned int inputElementCount = 4;
 	D3D12_INPUT_ELEMENT_DESC inputElements[inputElementCount] = {};
 	{
-		// Create an input layout that describes the vertex format
-		// used by the vertex shader we're using
-		//  - This is used by the pipeline to know how to interpret the raw data
-		//     sitting inside a vertex buffer
-
-		// Set up the first element - a position, which is 3 float values
 		inputElements[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-		inputElements[0].SemanticName = "POSITION";
-		inputElements[0].SemanticIndex = 0;
+		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[0].SemanticName = "POSITION"; // Name must match semantic in shader
+		inputElements[0].SemanticIndex = 0; // This is the first POSITION semantic (why is it first, what comes after?)
 
-		// Set up the second element - a color, which is 4 more float values
 		inputElements[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[1].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		inputElements[1].SemanticName = "COLOR";
-		inputElements[1].SemanticIndex = 0;
+		inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT; // R32 G32 = float2
+		inputElements[1].SemanticName = "TEXCOORD";
+		inputElements[1].SemanticIndex = 0; // This is the first TEXCOORD semantic
+
+		inputElements[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[2].SemanticName = "NORMAL";
+		inputElements[2].SemanticIndex = 0; // This is the first NORMAL semantic
+
+		inputElements[3].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		inputElements[3].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[3].SemanticName = "TANGENT";
+		inputElements[3].SemanticIndex = 0; // This is the first TANGENT semantic
 	}
 
 	// Root Signature

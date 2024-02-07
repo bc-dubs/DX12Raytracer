@@ -139,6 +139,11 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Camera.cpp" />
+    <ClCompile Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Mesh.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Transform.cpp" />
     <ClCompile Include="DX12Helper.cpp" />
     <ClCompile Include="DXCore.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -147,6 +152,9 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Camera.h" />
+    <ClInclude Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Mesh.h" />
+    <ClInclude Include="..\..\Downloads\DX11Starter-main\DX11Starter-main\Transform.h" />
     <ClInclude Include="DX12Helper.h" />
     <ClInclude Include="DXCore.h" />
     <ClInclude Include="Game.h" />
