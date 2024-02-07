@@ -46,6 +46,9 @@ struct VertexToPixel
 // --------------------------------------------------------
 VertexToPixel main( VertexShaderInput input )
 {
+	// Set up output struct
+	VertexToPixel output;
+
 	// X and Y components must be between -1 and 1, Z component must be between 0 and 1.  
 	// Each of these components is then automatically divided by the W component (1.0 for now)
 	matrix wvp = mul(projection, mul(view, world));

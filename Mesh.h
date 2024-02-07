@@ -49,7 +49,7 @@ public:
 	/// <summary>
 	/// Draws this mesh
 	/// </summary>
-	void Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
+	//void Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
