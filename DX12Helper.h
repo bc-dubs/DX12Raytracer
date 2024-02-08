@@ -20,7 +20,6 @@ public:
 	// Remove these functions (C++ 11 version)
 	DX12Helper(DX12Helper const&) = delete;
 	void operator=(DX12Helper const&) = delete;
-
 private:
 	static DX12Helper* instance;
 	DX12Helper() {};
@@ -45,7 +44,14 @@ public:
 	// Command list & synchronization
 	void CloseExecuteAndResetCommandList();
 	void WaitForGPU();
-
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> GetCBVSRVDescriptorHeap();
+	/// <summary>
+	/// Copies the given data into the next constant buffer in the upload heap, creates a CBV that points to it, and returns the GPU handle of that CBV
+	/// </summary>
+	/// <param name="data">The data to place into the next constant buffer</param>
+	/// <param name="dataSizeInBytes"></param>
+	/// <returns></returns>
+	D3D12_GPU_DESCRIPTOR_HANDLE FillNextConstantBufferAndGetGPUDescriptorHandle(void* data, unsigned int dataSizeInBytes);
 private:
 	// Overall device
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
@@ -63,4 +69,28 @@ private:
 	HANDLE                              waitFenceEvent;
 	unsigned long                       waitFenceCounter;
 
+	// Maximum number of constant buffers, assuming each buffer
+	// is 256 bytes or less. Larger buffers are fine, but will
+	// result in fewer buffers in use at any time
+	const unsigned int maxConstantBuffers = 1000;
+
+	// GPU-side constant buffer upload heap
+	Microsoft::WRL::ComPtr<ID3D12Resource> cbUploadHeap;
+	UINT64 cbUploadHeapSizeInBytes; // Total size of the entire CB upload heap
+	UINT64 cbUploadHeapOffsetInBytes; // How many CBs have been filled so far (loops around)
+	void* cbUploadHeapStartAddress; // The address to the upload heap that is stored when it is mapped
+
+	// GPU-side CBV/SRV descriptor heap
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> cbvSrvDescriptorHeap;
+	SIZE_T cbvSrvDescriptorHeapIncrementSize; // How big the increments for each descriptor are (inherent GPU variable)
+	unsigned int cbvDescriptorOffset; // Count of how many descriptors have been made (with looping)
+	
+	/// <summary>
+	/// Creates the program's CB upload heap during initialization
+	/// </summary>
+	void CreateConstantBufferUploadHeap();
+	/// <summary>
+	/// Creates the program's CBV/SRV descriptor heap during initialization
+	/// </summary>
+	void CreateCBVSRVDescriptorHeap();
 };
