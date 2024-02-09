@@ -15,6 +15,8 @@ Mesh::Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCo
 Mesh::Mesh(const wchar_t* filename)
 {
 	indexCount = 0;
+	vbView = {};
+	ibView = {};
 	// Author: Chris Cascioli
 	// Purpose: Basic .OBJ 3D model loading, supporting positions, uvs and normals
 
@@ -238,6 +240,7 @@ void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int in
 	indexBuffer = dx12Helper.CreateStaticBuffer(sizeof(unsigned int), indexCount, indices);
 
 	// Set up the views
+
 	vbView.StrideInBytes = sizeof(Vertex);
 	vbView.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
@@ -255,6 +258,16 @@ Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetVertexBuffer()
 Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetIndexBuffer()
 {
 	return indexBuffer;
+}
+
+D3D12_VERTEX_BUFFER_VIEW Mesh::GetVertexBufferView()
+{
+	return vbView;
+}
+
+D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView()
+{
+	return ibView;
 }
 
 unsigned int Mesh::GetIndexCount()

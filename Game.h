@@ -1,5 +1,10 @@
 #pragma once
 
+#include "Entity.h"
+#include "Camera.h"
+
+#include <memory>
+#include <vector>
 #include "DXCore.h"
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
@@ -34,10 +39,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
-
-	D3D12_VERTEX_BUFFER_VIEW vbView;
-	D3D12_INDEX_BUFFER_VIEW ibView;
+	// Game variables
+	std::vector<std::shared_ptr<Entity>> entities;
+	std::shared_ptr<Camera> camera;
 };
 

@@ -1,8 +1,10 @@
 #include "Game.h"
 #include "Vertex.h"
 #include "Input.h"
+#include "BufferStructs.h"
 #include "PathHelpers.h"
 #include "DX12Helper.h"
+
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
@@ -10,6 +12,7 @@
 
 // For the DirectX Math library
 using namespace DirectX;
+using namespace std;
 
 // --------------------------------------------------------
 // Constructor
@@ -33,8 +36,6 @@ Game::Game(HINSTANCE hInstance)
 	CreateConsoleWindow(500, 120, 32, 120);
 	printf("Console window created successfully.  Feel free to printf() here.\n");
 #endif
-	ibView = {};
-	vbView = {};
 }
 
 // --------------------------------------------------------
@@ -215,54 +216,31 @@ void Game::CreateRootSigAndPipelineState()
 // --------------------------------------------------------
 void Game::CreateBasicGeometry()
 {
-	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
-	XMFLOAT4 red	= XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green	= XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue	= XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	// Camera creation
+	camera = std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10)));
 
-	// Set up the vertices of the triangle we would like to draw
-	// - We're going to copy this array, exactly as it exists in CPU memory
-	//    over to a Direct3D-controlled data structure on the GPU (the vertex buffer)
-	// - Note: Since we don't have a camera or really any concept of
-	//    a "3d world" yet, we're simply describing positions within the
-	//    bounds of how the rasterizer sees our screen: [-1 to +1] on X and Y
-	// - This means (0,0) is at the very center of the screen.
-	// - These are known as "Normalized Device Coordinates" or "Homogeneous 
-	//    Screen Coords", which are ways to describe a position without
-	//    knowing the exact size (in pixels) of the image/window/etc.  
-	// - Long story short: Resizing the window also resizes the triangle,
-	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
+	// Mesh creation
+	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str());
+	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\sphere.obj").c_str());
+	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\torus.obj").c_str());
+	
+	entities = std::vector<std::shared_ptr<Entity>>();
+	entities.push_back(make_shared<Entity>(cubeMesh));
+	entities.push_back(make_shared<Entity>(sphereMesh));
+	entities.push_back(make_shared<Entity>(torusMesh));
+
+	// Arranging entities regularly
 	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
-	};
-
-	// Set up indices, which tell us which vertices to use and in which order
-	// - This is redundant for just 3 vertices, but will be more useful later
-	// - Indices are technically not required if the vertices are in the buffer 
-	//    in the correct order and each one will be used exactly once
-	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
-
-	// ============ VERTEX/INDEX BUFFER CREATION ============
-
-	// Create the two buffers
-	DX12Helper& dx12Helper = DX12Helper::GetInstance();
-	vertexBuffer = dx12Helper.CreateStaticBuffer(sizeof(Vertex), ARRAYSIZE(vertices), vertices);
-	indexBuffer = dx12Helper.CreateStaticBuffer(sizeof(unsigned int), ARRAYSIZE(indices), indices);
-
-	// Set up the views
-	vbView.StrideInBytes = sizeof(Vertex);
-	vbView.SizeInBytes = sizeof(Vertex) * ARRAYSIZE(vertices);
-	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-
-	ibView.Format = DXGI_FORMAT_R32_UINT;
-	ibView.SizeInBytes = sizeof(unsigned int) * ARRAYSIZE(indices);
-	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-
+		int numCols = 5;
+		float colSpacing = 3.5f;
+		float rowSpacing = 3.2f;
+		for (unsigned int i = 0; i < entities.size(); i++) {
+			std::shared_ptr<Entity> entity = entities[i];
+			float colIndex = (i % numCols) - numCols / 2.0f;
+			float rowIndex = i / numCols - (entities.size() / numCols) / 2.0f; // Offsets to center arrangement on approximately 0, 0
+			entity->GetTransform()->MoveBy(colIndex * colSpacing, -rowIndex * rowSpacing, 0);
+		}
+	}
 }
 
 
@@ -275,6 +253,7 @@ void Game::OnResize()
 {
 	// Handle base-level DX resize stuff
 	DXCore::OnResize();
+	camera->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
 }
 
 // --------------------------------------------------------
@@ -282,6 +261,14 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	for (unsigned int i = 0; i < entities.size(); i++) {
+		std::shared_ptr<Entity> entity = entities[i];
+		//entity->GetTransform()->RotateBy(0.0f, deltaTime/4, 0.0f);
+		entity->GetTransform()->SetPosition(entity->GetTransform()->GetPosition()->x, sin(totalTime), entity->GetTransform()->GetPosition()->z);
+	}
+
+	camera->Update(deltaTime);
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::GetInstance().KeyDown(VK_ESCAPE))
 		Quit();
@@ -327,7 +314,14 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 
 	// ============ RENDERING ============
-	// Rendering here!
+	
+	// Setting the pipeline's CBV descriptor heap
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap =
+		DX12Helper::GetInstance().GetCBVSRVDescriptorHeap();
+
+	commandList->SetDescriptorHeaps(1, descriptorHeap.GetAddressOf());
+
+	// Acrually rendering
 	{
 		// Set overall pipeline state
 		commandList->SetPipelineState(pipelineState.Get());
@@ -339,12 +333,30 @@ void Game::Draw(float deltaTime, float totalTime)
 		commandList->OMSetRenderTargets(1, &rtvHandles[currentSwapBuffer], true, &dsvHandle);
 		commandList->RSSetViewports(1, &viewport);
 		commandList->RSSetScissorRects(1, &scissorRect);
-		commandList->IASetVertexBuffers(0, 1, &vbView);
-		commandList->IASetIndexBuffer(&ibView);
+		//commandList->IASetVertexBuffers(0, 1, &vbView);
+		//commandList->IASetIndexBuffer(&ibView);
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		// Draw
-		commandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+		//commandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+		for (unsigned int i = 0; i < entities.size(); i++) {
+			std::shared_ptr<Mesh> mesh = entities[i]->GetMesh();
+
+			VertexShaderExternalData vsed = {};
+			vsed.world = entities[i]->GetTransform()->GetWorldMatrix();
+			vsed.view = camera->GetViewMatrix();
+			vsed.projection = camera->GetProjectionMatrix();
+
+			D3D12_GPU_DESCRIPTOR_HANDLE vsedHandle = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle(&vsed, 3 * sizeof(DirectX::XMFLOAT4X4));
+			commandList->SetGraphicsRootDescriptorTable(0, vsedHandle);
+
+			D3D12_VERTEX_BUFFER_VIEW vbView = mesh->GetVertexBufferView();
+			D3D12_INDEX_BUFFER_VIEW ibView = mesh->GetIndexBufferView();
+			commandList->IASetVertexBuffers(0, 1, &vbView);
+			commandList->IASetIndexBuffer(&ibView);
+
+			commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
+		}
 	}
 
 	// ============ PRESENTING ============
