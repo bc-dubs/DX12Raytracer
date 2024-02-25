@@ -16,6 +16,7 @@ public:
 
 	// TODO: Add necessary getters/setters
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandleForFirstSRV();
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineState();
 
 	/// <summary>
 	/// Adds the given texture SRV to this material in the specified slot (1 = Albedo, 2 = Normal, 3 = Roughness, 4 = Metalness)

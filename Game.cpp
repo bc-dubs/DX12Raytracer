@@ -180,6 +180,27 @@ void Game::CreateRootSigAndPipelineState()
 		rootSig.NumStaticSamplers = ARRAYSIZE(samplers);
 		rootSig.pStaticSamplers = samplers;
 
+		ID3DBlob* serializedRootSig = 0;
+		ID3DBlob* errors = 0;
+
+		D3D12SerializeRootSignature(
+			&rootSig,
+			D3D_ROOT_SIGNATURE_VERSION_1,
+			&serializedRootSig,
+			&errors);
+
+		// Check for errors during serialization
+		if (errors != 0)
+		{
+			OutputDebugString((wchar_t*)errors->GetBufferPointer());
+		}
+
+		// Actually create the root sig
+		device->CreateRootSignature(
+			0,
+			serializedRootSig->GetBufferPointer(),
+			serializedRootSig->GetBufferSize(),
+			IID_PPV_ARGS(rootSignature.GetAddressOf()));
 	}
 
 	// Pipeline state
@@ -387,9 +408,11 @@ void Game::Draw(float deltaTime, float totalTime)
 		//commandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
 		for (unsigned int i = 0; i < entities.size(); i++) {
 			std::shared_ptr<Mesh> mesh = entities[i]->GetMesh();
+			std::shared_ptr<Material> mat = entities[i]->GetMaterial();
 
 			VertexShaderExternalData vsed = {};
 			vsed.world = entities[i]->GetTransform()->GetWorldMatrix();
+			vsed.worldInvTranspose = entities[i]->GetTransform()->GetWorldInverseTransposeMatrix();
 			vsed.view = camera->GetViewMatrix();
 			vsed.projection = camera->GetProjectionMatrix();
 
@@ -400,6 +423,12 @@ void Game::Draw(float deltaTime, float totalTime)
 			D3D12_INDEX_BUFFER_VIEW ibView = mesh->GetIndexBufferView();
 			commandList->IASetVertexBuffers(0, 1, &vbView);
 			commandList->IASetIndexBuffer(&ibView);
+
+			// Set the SRV descriptor handle for this material's textures
+			// Note: This assumes that descriptor table 2 is for textures (as per our root sig)
+			//commandList->SetPipelineState(mat->GetPipelineState().Get()); // Why do we have to do this again???
+			commandList->SetGraphicsRootDescriptorTable(2, mat->GetGPUHandleForFirstSRV());
+
 
 			commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}

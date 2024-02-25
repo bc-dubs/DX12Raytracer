@@ -22,6 +22,11 @@ D3D12_GPU_DESCRIPTOR_HANDLE Material::GetGPUHandleForFirstSRV()
 	return D3D12_GPU_DESCRIPTOR_HANDLE();
 }
 
+Microsoft::WRL::ComPtr<ID3D12PipelineState> Material::GetPipelineState()
+{
+	return pipelineState;
+}
+
 void Material::AddTexture(D3D12_CPU_DESCRIPTOR_HANDLE srv, int slot)
 {
 	textureSRVsBySlot[slot] = srv;

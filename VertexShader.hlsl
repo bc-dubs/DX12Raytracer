@@ -1,5 +1,6 @@
 cbuffer WorldData : register(b0) {
 	matrix world;
+	matrix worldInvTranspose;
 	matrix view;
 	matrix projection;
 }
@@ -35,6 +36,10 @@ struct VertexToPixel
 	//  |    |                |
 	//  v    v                v
 	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
+	float3 normal			: NORMAL;		// Surface normal
+	float3 tangent			: TANGENT;		// Surface tangent
+	float3 worldPosition	: POSITION;		// Position in world space
+	float2 uv				: TEXCOORD;     // UV position
 };
 
 // --------------------------------------------------------
@@ -53,6 +58,17 @@ VertexToPixel main( VertexShaderInput input )
 	// Each of these components is then automatically divided by the W component (1.0 for now)
 	matrix wvp = mul(projection, mul(view, world));
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
+
+	// Transform the normal in the same way this vertex was transformed
+	output.normal = mul((float3x3)worldInvTranspose, input.normal); // Why does this work again???
+
+	output.tangent = mul((float3x3)world, input.tangent);
+
+	// Transform local position and output as a float3
+	output.worldPosition = mul(world, float4(input.localPosition, 1)).xyz;
+
+	// Pass the uv coordinate through 
+	output.uv = input.uv;
 
 	// Send the output to the next stage (pixel shader)
 	return output;
