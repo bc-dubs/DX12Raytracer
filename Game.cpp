@@ -231,24 +231,49 @@ void Game::CreateRootSigAndPipelineState()
 	}
 }
 
-
-// --------------------------------------------------------
-// Creates the geometry we're going to draw - a single triangle for now
-// --------------------------------------------------------
+// ----------------------------------------
+// Creates the geometry we're going to draw
+// ----------------------------------------
 void Game::CreateBasicGeometry()
 {
 	// Camera creation
 	camera = std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10)));
 
-	// Mesh creation
+	// Texture Loading
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_albedo.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_roughness.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_metal.png").c_str());
+
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_albedo.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_roughness.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_metal.png").c_str());
+
+	// Material Creation
+	shared_ptr<Material> bronze = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
+	bronze->AddTexture(bronzeAlbedoHandle, 0);
+	bronze->AddTexture(bronzeNormalHandle, 1);
+	bronze->AddTexture(bronzeRoughHandle, 2);
+	bronze->AddTexture(bronzeMetalHandle, 3);
+	bronze->FinalizeMaterial();
+
+	shared_ptr<Material> scratched = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
+	scratched->AddTexture(scratchedAlbedoHandle, 0);
+	scratched->AddTexture(scratchedNormalHandle, 1);
+	scratched->AddTexture(scratchedRoughHandle, 2);
+	scratched->AddTexture(scratchedMetalHandle, 3);
+	scratched->FinalizeMaterial();
+
+	// Mesh Creation
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str());
 	shared_ptr<Mesh> sphereMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\sphere.obj").c_str());
 	shared_ptr<Mesh> torusMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\torus.obj").c_str());
 	
 	entities = std::vector<std::shared_ptr<Entity>>();
-	entities.push_back(make_shared<Entity>(cubeMesh));
-	entities.push_back(make_shared<Entity>(sphereMesh));
-	entities.push_back(make_shared<Entity>(torusMesh));
+	entities.push_back(make_shared<Entity>(cubeMesh, bronze));
+	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
+	entities.push_back(make_shared<Entity>(torusMesh, bronze));
 
 	// Arranging entities regularly
 	{

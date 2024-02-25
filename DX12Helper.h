@@ -29,7 +29,7 @@ public:
 	/// <returns>The CPU handle for the descriptor heap that holds the SRV describing the texture we created</returns>
 	D3D12_CPU_DESCRIPTOR_HANDLE LoadTexture(const wchar_t* file, bool generateMips = true);
 	/// <summary>
-	/// Uploads a table of SRVs and cppies them to the CBV/SRV decriptor heap on the GPU. Returns a GPU handle so we can find the table of SRVs again.
+	/// Uploads a table of SRVs and copies them to the CBV/SRV decriptor heap on the GPU. Returns a GPU handle so we can find the table of SRVs again.
 	/// </summary>
 	/// <param name="firstDescriptorToCopy">The CPU address of the first SRV to copy over</param>
 	/// <param name="numDescriptorsToCopy">The number of SRVs to copy over</param>
