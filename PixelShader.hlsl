@@ -89,9 +89,4 @@ float4 main(VertexToPixel input) : SV_TARGET
 
 	// Gamma correcting and returning
 	return float4(pow(totalColor, 1 / 2.2f), 1);
-
-	//float3 iNorm = (input.normal + float3(1, 1, 1)) / 2;
-	//iNorm = normalize(iNorm);
-
-	//return float4(iNorm.x, iNorm.y, iNorm.z, 1);
 }

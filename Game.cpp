@@ -98,19 +98,19 @@ void Game::CreateRootSigAndPipelineState()
 		inputElements[0].SemanticIndex = 0; // This is the first POSITION semantic (why is it first, what comes after?)
 
 		inputElements[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT; // R32 G32 = float2
-		inputElements[1].SemanticName = "TEXCOORD";
-		inputElements[1].SemanticIndex = 0; // This is the first TEXCOORD semantic
+		inputElements[1].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
+		inputElements[1].SemanticName = "NORMAL";
+		inputElements[1].SemanticIndex = 0; // This is the first NORMAL semantic
 
 		inputElements[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
-		inputElements[2].SemanticName = "NORMAL";
-		inputElements[2].SemanticIndex = 0; // This is the first NORMAL semantic
+		inputElements[2].SemanticName = "TANGENT";
+		inputElements[2].SemanticIndex = 0; // This is the first TANGENT semantic
 
 		inputElements[3].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		inputElements[3].Format = DXGI_FORMAT_R32G32B32_FLOAT; // R32 G32 B32 = float3
-		inputElements[3].SemanticName = "TANGENT";
-		inputElements[3].SemanticIndex = 0; // This is the first TANGENT semantic
+		inputElements[3].Format = DXGI_FORMAT_R32G32_FLOAT; // R32 G32 = float2
+		inputElements[3].SemanticName = "TEXCOORD";
+		inputElements[3].SemanticIndex = 0; // This is the first TEXCOORD semantic
 	}
 
 	// Root Signature
