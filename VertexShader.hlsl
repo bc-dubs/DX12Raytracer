@@ -60,7 +60,8 @@ VertexToPixel main( VertexShaderInput input )
 	output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
 
 	// Transform the normal in the same way this vertex was transformed
-	output.normal = mul((float3x3)worldInvTranspose, input.normal); // Why does this work again???
+	//output.normal = mul((float3x3)worldInvTranspose, input.normal); // Why does this work again???
+	output.normal = input.normal;
 
 	output.tangent = mul((float3x3)world, input.tangent);
 

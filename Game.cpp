@@ -260,29 +260,75 @@ void Game::CreateBasicGeometry()
 	// Camera creation
 	camera = std::make_shared<Camera>(Camera((float)this->windowWidth / this->windowHeight, XMFLOAT3(0, 0, -10)));
 
+	// Light creation
+	allLights = vector<shared_ptr<Light>>();
+	activeLights = unordered_map<int, shared_ptr<Light>>();
+	{
+		Light directionalLight = {};
+		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
+		directionalLight.Direction = XMFLOAT3(-1, -1, 0.1f);
+		directionalLight.Color = XMFLOAT3(1.0f, 0.3f, 0.3f);
+		directionalLight.Intensity = 1.0f;
+		allLights.push_back(make_shared<Light>(directionalLight));
+		activeLights.insert({ 0, allLights[0] });
+	}
+	{
+		Light directionalLight = {};
+		directionalLight.Type = LIGHT_TYPE_DIRECTIONAL;
+		directionalLight.Direction = XMFLOAT3(1, -1, -0.1f);
+		directionalLight.Color = XMFLOAT3(0.5f, 0.15f, 0.15f);
+		directionalLight.Intensity = 1.0f;
+		allLights.push_back(make_shared<Light>(directionalLight));
+		activeLights.insert({ 1, allLights[1] });
+	}
+	// Point lights
+	{
+		Light pointLight = {};
+		pointLight.Type = LIGHT_TYPE_POINT;
+		pointLight.Position = XMFLOAT3(3, 0, 0);
+		pointLight.Range = 4.0f;
+		pointLight.Color = XMFLOAT3(0.5f, 0.5f, 0.0f);
+		pointLight.Intensity = 1.0f;
+		allLights.push_back(make_shared<Light>(pointLight));
+	}
+	{
+		Light pointLight = {};
+		pointLight.Type = LIGHT_TYPE_POINT;
+		pointLight.Position = XMFLOAT3(0, 0, -5);
+		pointLight.Range = 10.0f;
+		pointLight.Color = XMFLOAT3(1.0f, 0.0f, 1.0f);
+		pointLight.Intensity = 0.5f;
+		allLights.push_back(make_shared<Light>(pointLight));
+	}
+
+	lightsToRender = vector<Light>();
+	for (auto& light : activeLights) {
+		lightsToRender.push_back(*light.second);
+	}
+
 	// Texture Loading
 	D3D12_CPU_DESCRIPTOR_HANDLE bronzeAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_albedo.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE bronzeNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str());
 	D3D12_CPU_DESCRIPTOR_HANDLE bronzeRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_roughness.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str());
 	D3D12_CPU_DESCRIPTOR_HANDLE bronzeMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_metal.png").c_str());
 
 	D3D12_CPU_DESCRIPTOR_HANDLE scratchedAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_albedo.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE scratchedNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str());
 	D3D12_CPU_DESCRIPTOR_HANDLE scratchedRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_roughness.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str());
 	D3D12_CPU_DESCRIPTOR_HANDLE scratchedMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_metal.png").c_str());
 
 	// Material Creation
 	shared_ptr<Material> bronze = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
 	bronze->AddTexture(bronzeAlbedoHandle, 0);
-	bronze->AddTexture(bronzeNormalHandle, 1);
-	bronze->AddTexture(bronzeRoughHandle, 2);
+	bronze->AddTexture(bronzeRoughHandle, 1);
+	bronze->AddTexture(bronzeNormalHandle, 2);
 	bronze->AddTexture(bronzeMetalHandle, 3);
 	bronze->FinalizeMaterial();
 
 	shared_ptr<Material> scratched = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
 	scratched->AddTexture(scratchedAlbedoHandle, 0);
-	scratched->AddTexture(scratchedNormalHandle, 1);
-	scratched->AddTexture(scratchedRoughHandle, 2);
+	scratched->AddTexture(scratchedRoughHandle, 1);
+	scratched->AddTexture(scratchedNormalHandle, 2);
 	scratched->AddTexture(scratchedMetalHandle, 3);
 	scratched->FinalizeMaterial();
 
@@ -410,25 +456,52 @@ void Game::Draw(float deltaTime, float totalTime)
 			std::shared_ptr<Mesh> mesh = entities[i]->GetMesh();
 			std::shared_ptr<Material> mat = entities[i]->GetMaterial();
 
-			VertexShaderExternalData vsed = {};
-			vsed.world = entities[i]->GetTransform()->GetWorldMatrix();
-			vsed.worldInvTranspose = entities[i]->GetTransform()->GetWorldInverseTransposeMatrix();
-			vsed.view = camera->GetViewMatrix();
-			vsed.projection = camera->GetProjectionMatrix();
+			// Vertex shader cbuffer setup
+			{
+				VertexShaderExternalData vsed = {};
+				vsed.world = entities[i]->GetTransform()->GetWorldMatrix();
+				vsed.worldInvTranspose = entities[i]->GetTransform()->GetWorldInverseTransposeMatrix();
+				vsed.view = camera->GetViewMatrix();
+				vsed.projection = camera->GetProjectionMatrix();
 
-			D3D12_GPU_DESCRIPTOR_HANDLE vsedHandle = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle(&vsed, 4 * sizeof(DirectX::XMFLOAT4X4));
-			commandList->SetGraphicsRootDescriptorTable(0, vsedHandle);
+				D3D12_GPU_DESCRIPTOR_HANDLE vsedHandle = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle(&vsed, 4 * sizeof(DirectX::XMFLOAT4X4));
+				commandList->SetGraphicsRootDescriptorTable(0, vsedHandle);
+			}
 
-			D3D12_VERTEX_BUFFER_VIEW vbView = mesh->GetVertexBufferView();
-			D3D12_INDEX_BUFFER_VIEW ibView = mesh->GetIndexBufferView();
-			commandList->IASetVertexBuffers(0, 1, &vbView);
-			commandList->IASetIndexBuffer(&ibView);
+			// Pixel shader cbuffer setup
+			{
+				PixelShaderExternalData psed = {};
+				psed.uvScale = mat->GetUVScale();
+				psed.uvOffset = mat->GetUVOffset();
+				psed.cameraPosition = *camera->GetTransform()->GetPosition();
+				psed.lightCount = (int)lightsToRender.size();
+				memcpy(psed.lights, &lightsToRender[0], sizeof(Light) * (int)lightsToRender.size());
 
-			// Set the SRV descriptor handle for this material's textures
-			// Note: This assumes that descriptor table 2 is for textures (as per our root sig)
-			commandList->SetPipelineState(mat->GetPipelineState().Get()); // Why do we have to do this again???
-			commandList->SetGraphicsRootDescriptorTable(2, mat->GetGPUHandleForFirstSRV());
+				// Send this to a chunk of the constant buffer heap and grab the GPU handle for it so we can set it for this draw
+				D3D12_GPU_DESCRIPTOR_HANDLE cbHandlePS = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle((void*)(&psed), sizeof(PixelShaderExternalData));
+				
+				// Set this constant buffer handle
+				// Note: This assumes that descriptor table 1 is the
+				//       place to put this particular descriptor.  This
+				//       is based on how we set up our root signature.
+				commandList->SetGraphicsRootDescriptorTable(1, cbHandlePS);
+			}
 
+			// Mesh setup
+			{
+				D3D12_VERTEX_BUFFER_VIEW vbView = mesh->GetVertexBufferView();
+				D3D12_INDEX_BUFFER_VIEW ibView = mesh->GetIndexBufferView();
+				commandList->IASetVertexBuffers(0, 1, &vbView);
+				commandList->IASetIndexBuffer(&ibView);
+			}
+
+			// Material setup
+			{
+				// Set the SRV descriptor handle for this material's textures
+				// Note: This assumes that descriptor table 2 is for textures (as per our root sig)
+				commandList->SetPipelineState(mat->GetPipelineState().Get()); // Why do we have to do this again???
+				commandList->SetGraphicsRootDescriptorTable(2, mat->GetGPUHandleForFirstSRV());
+			}
 
 			commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}

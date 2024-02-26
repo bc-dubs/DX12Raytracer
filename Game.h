@@ -2,12 +2,14 @@
 
 #include "Entity.h"
 #include "Camera.h"
+#include "Lights.h"
 
 #include <memory>
 #include <vector>
 #include "DXCore.h"
 #include <DirectXMath.h>
 #include <wrl/client.h> // Used for ComPtr - a smart pointer for COM objects
+#include <unordered_map>
 
 class Game 
 	: public DXCore
@@ -42,5 +44,10 @@ private:
 	// Game variables
 	std::vector<std::shared_ptr<Entity>> entities;
 	std::shared_ptr<Camera> camera;
+
+	// Lighting variables
+	std::unordered_map<int, std::shared_ptr<Light>> activeLights;
+	std::vector<Light> lightsToRender;
+	std::vector<std::shared_ptr<Light>> allLights;
 };
 

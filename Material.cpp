@@ -15,6 +15,21 @@ Material::~Material()
 {
 }
 
+DirectX::XMFLOAT3 Material::GetColorTint()
+{
+	return colorTint;
+}
+
+DirectX::XMFLOAT2 Material::GetUVScale()
+{
+	return uvScale;
+}
+
+DirectX::XMFLOAT2 Material::GetUVOffset()
+{
+	return uvOffset;
+}
+
 D3D12_GPU_DESCRIPTOR_HANDLE Material::GetGPUHandleForFirstSRV()
 {
 	if(finalized)

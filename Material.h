@@ -15,11 +15,14 @@ public:
 	~Material();
 
 	// TODO: Add necessary getters/setters
+	DirectX::XMFLOAT3 GetColorTint();
+	DirectX::XMFLOAT2 GetUVScale();
+	DirectX::XMFLOAT2 GetUVOffset();
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandleForFirstSRV();
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetPipelineState();
 
 	/// <summary>
-	/// Adds the given texture SRV to this material in the specified slot (1 = Albedo, 2 = Normal, 3 = Roughness, 4 = Metalness)
+	/// Adds the given texture SRV to this material in the specified slot (1 = Albedo, 2 = Roughness, 3 = Normal, 4 = Metalness)
 	/// </summary>
 	/// <param name="srv">A texture SRV</param>
 	/// <param name="slot">The slot to store the SRV in</param>
