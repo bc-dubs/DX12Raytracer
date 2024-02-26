@@ -296,7 +296,7 @@ void Game::CreateBasicGeometry()
 	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
 	entities.push_back(make_shared<Entity>(torusMesh, bronze));
 
-	// Arranging entities regularly
+	//Arranging entities regularly
 	{
 		int numCols = 5;
 		float colSpacing = 3.5f;
@@ -330,7 +330,7 @@ void Game::Update(float deltaTime, float totalTime)
 {
 	for (unsigned int i = 0; i < entities.size(); i++) {
 		std::shared_ptr<Entity> entity = entities[i];
-		//entity->GetTransform()->RotateBy(0.0f, deltaTime/4, 0.0f);
+		entity->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime/4);
 		entity->GetTransform()->SetPosition(entity->GetTransform()->GetPosition()->x, sin(totalTime), entity->GetTransform()->GetPosition()->z);
 	}
 
@@ -388,7 +388,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	commandList->SetDescriptorHeaps(1, descriptorHeap.GetAddressOf());
 
-	// Acrually rendering
+	// Actually rendering
 	{
 		// Set overall pipeline state
 		commandList->SetPipelineState(pipelineState.Get());
@@ -416,7 +416,7 @@ void Game::Draw(float deltaTime, float totalTime)
 			vsed.view = camera->GetViewMatrix();
 			vsed.projection = camera->GetProjectionMatrix();
 
-			D3D12_GPU_DESCRIPTOR_HANDLE vsedHandle = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle(&vsed, 3 * sizeof(DirectX::XMFLOAT4X4));
+			D3D12_GPU_DESCRIPTOR_HANDLE vsedHandle = DX12Helper::GetInstance().FillNextConstantBufferAndGetGPUDescriptorHandle(&vsed, 4 * sizeof(DirectX::XMFLOAT4X4));
 			commandList->SetGraphicsRootDescriptorTable(0, vsedHandle);
 
 			D3D12_VERTEX_BUFFER_VIEW vbView = mesh->GetVertexBufferView();
@@ -426,7 +426,7 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			// Set the SRV descriptor handle for this material's textures
 			// Note: This assumes that descriptor table 2 is for textures (as per our root sig)
-			//commandList->SetPipelineState(mat->GetPipelineState().Get()); // Why do we have to do this again???
+			commandList->SetPipelineState(mat->GetPipelineState().Get()); // Why do we have to do this again???
 			commandList->SetGraphicsRootDescriptorTable(2, mat->GetGPUHandleForFirstSRV());
 
 

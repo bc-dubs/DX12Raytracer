@@ -40,6 +40,5 @@ float4 main(VertexToPixel input) : SV_TARGET
 	//   of the triangle we're rendering
 	float3 albedo = pow(AlbedoTexture.Sample(BasicSampler, input.uv).rgb, 2.2f);
 
-	//return float4(albedo.r, albedo.g, albedo.b, 1);
-	return float4(1, 1, 1, 1);
+	return float4(albedo.r, albedo.g, albedo.b, 1);
 }
