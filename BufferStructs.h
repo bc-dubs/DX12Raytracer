@@ -29,5 +29,6 @@ struct RaytracingSceneData
 #define MAX_INSTANCES_PER_BLAS 100
 struct RaytracingEntityData
 {
+	DirectX::XMFLOAT4X4 worldInvTranspose[MAX_INSTANCES_PER_BLAS];
 	DirectX::XMFLOAT4 color[MAX_INSTANCES_PER_BLAS];
 };

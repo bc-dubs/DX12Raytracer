@@ -2,6 +2,7 @@
 // === Defines ===
 
 #define PI 3.141592654f
+#define MAX_RECURSION_DEPTH 10
 
 // === Structs ===
 
@@ -9,9 +10,9 @@
 struct Vertex
 {
     float3 localPosition	: POSITION;
+	float3 normal			: NORMAL;
+	float3 tangent			: TANGENT;
     float2 uv				: TEXCOORD;
-    float3 normal			: NORMAL;
-    float3 tangent			: TANGENT;
 };
 static const uint VertexSizeInBytes = 11 * 4; // 11 floats total per vertex * 4 bytes each
 
@@ -21,6 +22,8 @@ static const uint VertexSizeInBytes = 11 * 4; // 11 floats total per vertex * 4 
 struct RayPayload
 {
 	float3 color;
+	uint recursionDepth; // How many times this ray has bounced
+	uint rayPerPixelIndex; // What is this ray's index within its pixel (used for PRNG)
 };
 
 // Note: We'll be using the built-in BuiltInTriangleIntersectionAttributes struct
@@ -42,6 +45,7 @@ cbuffer SceneData : register(b0)
 #define MAX_INSTANCES_PER_BLAS 100
 cbuffer ObjectData : register(b1)
 {
+	matrix worldInvTranspose[MAX_INSTANCES_PER_BLAS];
 	float4 entityColor[MAX_INSTANCES_PER_BLAS];
 };
 
@@ -58,8 +62,40 @@ RaytracingAccelerationStructure SceneTLAS	: register(t0);
 ByteAddressBuffer IndexBuffer        		: register(t1);
 ByteAddressBuffer VertexBuffer				: register(t2);
 
+// === Pseudo-random Number Generators ===
+float rand(float2 uv)
+{
+	return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
 
-// === Helpers ===
+float2 rand2(float2 uv)
+{
+	float x = rand(uv);
+	float y = sqrt(1 - x * x);
+	return float2(x, y);
+}
+
+float3 rand3(float2 uv)
+{
+	return float3(
+		rand2(uv),
+		rand(uv.yx));
+}
+
+float3 RandomCosineWeightedHemisphere(float u0, float u1, float3 unitNormal)
+{
+	float a = u0 * 2 - 1;
+	float b = sqrt(1 - a * a);
+	float phi = 2.0f * PI * u1;
+
+	float x = unitNormal.x + b * cos(phi);
+	float y = unitNormal.y + b * sin(phi);
+	float z = unitNormal.z + a;
+	return float3(x, y, z);
+}
+
+
+// === Other Helpers ===
 
 // Loads the indices of the specified triangle from the index buffer
 uint3 LoadIndices(uint triangleIndex)
@@ -94,16 +130,16 @@ Vertex InterpolateVertices(uint triangleIndex, float3 barycentricData)
 		vert.localPosition += asfloat(VertexBuffer.Load3(dataIndex)) * barycentricData[i];
 		dataIndex += 3 * 4; // 3 floats * 4 bytes per float
 
-		// UV
-		vert.uv += asfloat(VertexBuffer.Load2(dataIndex)) * barycentricData[i];
-		dataIndex += 2 * 4; // 2 floats * 4 bytes per float
-
 		// Normal
 		vert.normal += asfloat(VertexBuffer.Load3(dataIndex)) * barycentricData[i];
 		dataIndex += 3 * 4; // 3 floats * 4 bytes per float
 
 		// Tangent (no offset at the end, since we start over after looping)
 		vert.tangent += asfloat(VertexBuffer.Load3(dataIndex)) * barycentricData[i];
+
+		// UV
+		vert.uv += asfloat(VertexBuffer.Load2(dataIndex)) * barycentricData[i];
+		dataIndex += 2 * 4; // 2 floats * 4 bytes per float
 	}
 
 	// Final interpolated vertex data is ready
@@ -138,35 +174,46 @@ void RayGen()
 	// Get the ray indices
 	uint2 rayIndices = DispatchRaysIndex().xy;
 
-	// Calculate the ray data
-	float3 rayOrigin;
-	float3 rayDirection;
-	CalcRayFromCamera(rayIndices, rayOrigin, rayDirection);
+	float3 totalColor = float3(0, 0, 0);
 
-	// Set up final ray description
-	RayDesc ray;
-	ray.Origin = rayOrigin;
-	ray.Direction = rayDirection;
-	ray.TMin = 0.0001f;
-	ray.TMax = 1000.0f;
+	int raysPerPixel = 25;
+	for (int r = 0; r < raysPerPixel; r++) {
+		float2 adjustedRayIndices = (float2)rayIndices + rand((float)r / raysPerPixel);
 
-	// Set up the payload for the ray
-	// This initializes the struct to all zeros
-	RayPayload payload = (RayPayload)0;
+		// Calculate the ray data
+		float3 rayOrigin;
+		float3 rayDirection;
+		CalcRayFromCamera(adjustedRayIndices, rayOrigin, rayDirection);
 
-	// Perform the ray trace for this ray
-	TraceRay(
-		SceneTLAS,
-		RAY_FLAG_NONE,
-		0xFF,
-		0,
-		0,
-		0,
-		ray,
-		payload);
+		// Set up final ray description
+		RayDesc ray;
+		ray.Origin = rayOrigin;
+		ray.Direction = rayDirection;
+		ray.TMin = 0.0001f;
+		ray.TMax = 1000.0f;
+
+		// Set up the payload for the ray
+		// This initializes the struct to all zeros
+		RayPayload payload = (RayPayload)0;
+		payload.color = float3(1, 1, 1);
+
+		// Perform the ray trace for this ray
+		TraceRay(
+			SceneTLAS,
+			RAY_FLAG_NONE,
+			0xFF,
+			0,
+			0,
+			0,
+			ray,
+			payload);
+
+		totalColor += payload.color;
+	}
+	totalColor /= raysPerPixel;
 
 	// Set the final color of the buffer (gamma corrected)
-	OutputColor[rayIndices] = float4(pow(payload.color, 1.0f / 2.2f), 1);
+	OutputColor[rayIndices] = float4(pow(totalColor, 1.0f / 2.2f), 1);
 }
 
 
@@ -180,7 +227,7 @@ void Miss(inout RayPayload payload)
 
 	// Interpolate based on the direction of the ray
 	float interpolation = dot(normalize(WorldRayDirection()), float3(0, 1, 0)) * 0.5f + 0.5f;
-	payload.color = lerp(downColor, upColor, interpolation);
+	payload.color *= lerp(downColor, upColor, interpolation);
 }
 
 
@@ -188,6 +235,12 @@ void Miss(inout RayPayload payload)
 [shader("closesthit")]
 void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes hitAttributes)
 {
+	// Check for max recursion depth
+	if (payload.recursionDepth > MAX_RECURSION_DEPTH) {
+		payload.color = float3(0, 0, 0);
+		return;
+	}
+	
 	// Grab the index of the triangle we hit
 	uint triangleIndex = PrimitiveIndex();
 
@@ -199,8 +252,33 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 
 	// Get the interpolated vertex data
 	Vertex interpolatedVert = InterpolateVertices(triangleIndex, barycentricData);
-
 	// Get the data for this entity
 	uint instanceID = InstanceID();
-	payload.color = entityColor[instanceID].rgb;
+	// Adjust tint of payload
+	payload.color *= entityColor[instanceID].rgb;
+	
+	float3 normal_WS = mul((float3x3)worldInvTranspose[instanceID], interpolatedVert.normal);
+	float3 refl = reflect(WorldRayDirection(), normal_WS); // A perfect reflection across the normal
+	float2 pixelUV = (float2)DispatchRaysIndex() / (float2)DispatchRaysDimensions();
+	float2 rng = rand2(pixelUV * (payload.recursionDepth + 1) + payload.rayPerPixelIndex + RayTCurrent());
+	float3 diff = RandomCosineWeightedHemisphere(rand(rng), rand(rng.yx), normal_WS);
+
+	// Set up new ray
+	RayDesc ray;
+	ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent(); // Intrinsic functions: the current ray's origin in world coords plus its direction times its T
+	ray.Direction = normalize(lerp(refl, diff, entityColor[InstanceID()].a)); // Working just with specular for now
+	ray.TMin = 0.0001f;
+	ray.TMax = 1000.0f;
+
+	// Continue recursion
+	payload.recursionDepth++;
+	TraceRay(
+		SceneTLAS,
+		RAY_FLAG_NONE,
+		0xFF,
+		0,
+		0,
+		0,
+		ray,
+		payload);
 }
