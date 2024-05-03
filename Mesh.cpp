@@ -1,5 +1,6 @@
 #include "Mesh.h"
 #include "DX12Helper.h"
+#include "RaytracingHelper.h"
 #include <fstream>
 #include <vector>
 #include <DirectXMath.h>
@@ -7,13 +8,14 @@
 using namespace DirectX;
 
 Mesh::Mesh(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount)
-	: indexCount(indexCount)
+	: vertexCount(vertexCount), indexCount(indexCount)
 {
 	Init(vertices, vertexCount, indices, indexCount);
 }
 
 Mesh::Mesh(const wchar_t* filename)
 {
+	vertexCount = 0;
 	indexCount = 0;
 	vbView = {};
 	ibView = {};
@@ -220,6 +222,7 @@ Mesh::Mesh(const wchar_t* filename)
 	//    sophisticated model loading library like TinyOBJLoader or The Open Asset Importer Library
 
 	indexCount = indexCounter;
+	vertexCount = vertCounter;
 	Init(&verts[0], vertCounter, &indices[0], indexCounter);
 }
 
@@ -240,7 +243,6 @@ void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int in
 	indexBuffer = dx12Helper.CreateStaticBuffer(sizeof(unsigned int), indexCount, indices);
 
 	// Set up the views
-
 	vbView.StrideInBytes = sizeof(Vertex);
 	vbView.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
@@ -248,6 +250,9 @@ void Mesh::Init(Vertex* vertices, int vertexCount, unsigned int* indices, int in
 	ibView.Format = DXGI_FORMAT_R32_UINT;
 	ibView.SizeInBytes = sizeof(unsigned int) * indexCount;
 	ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+
+	// Create BLAS
+	raytraceData = RaytracingHelper::GetInstance().CreateBottomLevelAccelerationStructureForMesh(this);
 }
 
 Microsoft::WRL::ComPtr<ID3D12Resource> Mesh::GetVertexBuffer()
@@ -270,9 +275,19 @@ D3D12_INDEX_BUFFER_VIEW Mesh::GetIndexBufferView()
 	return ibView;
 }
 
+unsigned int Mesh::GetVertexCount()
+{
+	return vertexCount;
+}
+
 unsigned int Mesh::GetIndexCount()
 {
 	return indexCount;
+}
+
+MeshRaytracingData Mesh::GetRaytracingData()
+{
+	return raytraceData;
 }
 
 //void Mesh::Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context)

@@ -8,6 +8,14 @@
 #include <wrl/client.h>
 #include "Vertex.h"
 
+struct MeshRaytracingData
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE IndexbufferSRV{ };
+	D3D12_GPU_DESCRIPTOR_HANDLE VertexBufferSRV{ };
+	Microsoft::WRL::ComPtr<ID3D12Resource> BLAS;
+	unsigned int HitGroupIndex = 0;
+};
+
 class Mesh
 {
 public:
@@ -42,10 +50,20 @@ public:
 	/// <returns>This mesh's index buffer view</returns>
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView();
 	/// <summary>
+	/// Returns the number of vertices in this mesh
+	/// </summary>
+	/// <returns>The number of vertices in this mesh</returns>
+	unsigned int GetVertexCount();
+	/// <summary>
 	/// Returns the number of indices in this mesh
 	/// </summary>
 	/// <returns>The number of indices in this mesh</returns>
 	unsigned int GetIndexCount();
+	/// <summary>
+	/// Returns this mesh's raytracing data
+	/// </summary>
+	/// <returns>This mesh's raytracing data</returns>
+	MeshRaytracingData GetRaytracingData();
 	/// <summary>
 	/// Draws this mesh
 	/// </summary>
@@ -58,7 +76,10 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW vbView;
 	D3D12_INDEX_BUFFER_VIEW ibView;
 
+	unsigned int vertexCount;
 	unsigned int indexCount;
+
+	MeshRaytracingData raytraceData;
 
 	void Init(Vertex* vertices, int vertexCount, unsigned int* indices, int indexCount);
 	void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);

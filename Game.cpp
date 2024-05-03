@@ -4,6 +4,7 @@
 #include "BufferStructs.h"
 #include "PathHelpers.h"
 #include "DX12Helper.h"
+#include "RaytracingHelper.h"
 
 
 // Needed for a helper function to load pre-compiled shader files
@@ -54,7 +55,7 @@ Game::~Game()
 
 	// Cannot delete until the GPU is done with its work
 	DX12Helper::GetInstance().WaitForGPU();
-
+	delete& RaytracingHelper::GetInstance();
 }
 
 // --------------------------------------------------------
@@ -63,6 +64,15 @@ Game::~Game()
 // --------------------------------------------------------
 void Game::Init()
 {
+	// Attempt to initialize DXR (DirectX Raytracing)
+	RaytracingHelper::GetInstance().Initialize(
+		windowWidth,
+		windowHeight,
+		device,
+		commandQueue,
+		commandList,
+		FixPath(L"Raytracing.cso"));
+
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
@@ -307,30 +317,42 @@ void Game::CreateBasicGeometry()
 	}
 
 	// Texture Loading
-	D3D12_CPU_DESCRIPTOR_HANDLE bronzeAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_albedo.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE bronzeRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_roughness.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE bronzeNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE bronzeMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_metal.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_albedo.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_roughness.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_normals.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE bronzeMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\bronze_metal.png").c_str(), true);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE scratchedAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_albedo.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE scratchedRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_roughness.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE scratchedNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str());
-	D3D12_CPU_DESCRIPTOR_HANDLE scratchedMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_metal.png").c_str());
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_albedo.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_roughness.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_normals.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE scratchedMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\scratched_metal.png").c_str(), true);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE woodAlbedoHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\wood_albedo.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE woodRoughHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\wood_roughness.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE woodNormalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\wood_normals.png").c_str(), true);
+	D3D12_CPU_DESCRIPTOR_HANDLE woodMetalHandle = DX12Helper::GetInstance().LoadTexture(FixPath(L"..\\..\\Assets\\Textures\\wood_metal.png").c_str(), true);
 
 	// Material Creation
-	shared_ptr<Material> bronze = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
+	shared_ptr<Material> bronze = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(0.3, 0.6, 0.2), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
 	bronze->AddTexture(bronzeAlbedoHandle, 0);
 	bronze->AddTexture(bronzeRoughHandle, 1);
 	bronze->AddTexture(bronzeNormalHandle, 2);
 	bronze->AddTexture(bronzeMetalHandle, 3);
 	bronze->FinalizeMaterial();
 
-	shared_ptr<Material> scratched = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(1, 1, 1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
+	shared_ptr<Material> scratched = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(0.9, 0.2, 0.5), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
 	scratched->AddTexture(scratchedAlbedoHandle, 0);
 	scratched->AddTexture(scratchedRoughHandle, 1);
 	scratched->AddTexture(scratchedNormalHandle, 2);
 	scratched->AddTexture(scratchedMetalHandle, 3);
 	scratched->FinalizeMaterial();
+
+	shared_ptr<Material> wood = make_shared<Material>(pipelineState, DirectX::XMFLOAT3(0.1, 0.1, 0.1), DirectX::XMFLOAT2(1, 1), DirectX::XMFLOAT2(0, 0));
+	wood->AddTexture(woodAlbedoHandle, 0);
+	wood->AddTexture(woodRoughHandle, 1);
+	wood->AddTexture(woodNormalHandle, 2);
+	wood->AddTexture(woodMetalHandle, 3);
+	wood->FinalizeMaterial();
 
 	// Mesh Creation
 	shared_ptr<Mesh> cubeMesh = make_shared<Mesh>(FixPath(L"..\\..\\Assets\\Meshes\\cube.obj").c_str());
@@ -340,6 +362,19 @@ void Game::CreateBasicGeometry()
 	entities = std::vector<std::shared_ptr<Entity>>();
 	entities.push_back(make_shared<Entity>(cubeMesh, bronze));
 	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
+	entities.push_back(make_shared<Entity>(torusMesh, bronze));
+	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
+	entities.push_back(make_shared<Entity>(sphereMesh, bronze));
+	entities.push_back(make_shared<Entity>(torusMesh, scratched));
+	entities.push_back(make_shared<Entity>(cubeMesh, scratched));
+	entities.push_back(make_shared<Entity>(torusMesh, bronze));
+	entities.push_back(make_shared<Entity>(cubeMesh, bronze));
+	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
+	entities.push_back(make_shared<Entity>(torusMesh, bronze));
+	entities.push_back(make_shared<Entity>(sphereMesh, scratched));
+	entities.push_back(make_shared<Entity>(sphereMesh, bronze));
+	entities.push_back(make_shared<Entity>(torusMesh, scratched));
+	entities.push_back(make_shared<Entity>(cubeMesh, scratched));
 	entities.push_back(make_shared<Entity>(torusMesh, bronze));
 
 	//Arranging entities regularly
@@ -351,9 +386,17 @@ void Game::CreateBasicGeometry()
 			std::shared_ptr<Entity> entity = entities[i];
 			float colIndex = (i % numCols) - numCols / 2.0f;
 			float rowIndex = i / numCols - (entities.size() / numCols) / 2.0f; // Offsets to center arrangement on approximately 0, 0
-			entity->GetTransform()->MoveBy(colIndex * colSpacing, -rowIndex * rowSpacing, 0);
+			entity->GetTransform()->MoveBy(colIndex * colSpacing, - rowIndex * rowSpacing + 2 * cos(colIndex * 8.32), 4 * sin(colIndex * rowIndex * 3.85));
+			entity->GetTransform()->RotateBy(sin(colIndex * 10 + 4), tan(rowIndex * 7.72), tan(colIndex * 15.31));
 		}
 	}
+
+	entities.push_back(make_shared<Entity>(cubeMesh, wood));
+	entities[entities.size()-1]->GetTransform()->SetScale(XMFLOAT3(500, 1, 500));
+	entities[entities.size()-1]->GetTransform()->SetPosition(XMFLOAT3(0, -10, 0));
+
+	// Meshes create their own BLAS's; we just need to create the TLAS for the scene here
+	RaytracingHelper::GetInstance().CreateTopLevelAccelerationStructureForScene(entities);
 }
 
 
@@ -367,6 +410,7 @@ void Game::OnResize()
 	// Handle base-level DX resize stuff
 	DXCore::OnResize();
 	camera->UpdateProjectionMatrix((float)this->windowWidth / this->windowHeight);
+	RaytracingHelper::GetInstance().ResizeOutputUAV(windowWidth, windowHeight); // Change the dimensions of texture used for raytracing
 }
 
 // --------------------------------------------------------
@@ -374,10 +418,10 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
-	for (unsigned int i = 0; i < entities.size(); i++) {
+	for (unsigned int i = 0; i < entities.size() - 1; i++) {
 		std::shared_ptr<Entity> entity = entities[i];
 		entity->GetTransform()->RotateBy(0.0f, 0.0f, deltaTime/4);
-		entity->GetTransform()->SetPosition(entity->GetTransform()->GetPosition()->x, sin(totalTime), entity->GetTransform()->GetPosition()->z);
+		entity->GetTransform()->SetPosition(entity->GetTransform()->GetPosition()->x, entity->GetTransform()->GetPosition()->y - sin(totalTime - deltaTime) + sin(totalTime), entity->GetTransform()->GetPosition()->z);
 	}
 
 	camera->Update(deltaTime);
@@ -393,6 +437,7 @@ void Game::Update(float deltaTime, float totalTime)
 void Game::Draw(float deltaTime, float totalTime)
 {
 	// ============ CLEAR RENDER TARGET ============
+	/*
 	// Grab the current back buffer for this frame
 	Microsoft::WRL::ComPtr<ID3D12Resource> currentBackBuffer = backBuffers[currentSwapBuffer];
 
@@ -424,10 +469,10 @@ void Game::Draw(float deltaTime, float totalTime)
 			1.0f,	// Max depth = 1.0f
 			0,		// Not clearing stencil, but need a value
 			0, 0);	// No scissor rects
-	}
+	}*/
 
 	// ============ RENDERING ============
-	
+	/*
 	// Setting the pipeline's CBV descriptor heap
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap =
 		DX12Helper::GetInstance().GetCBVSRVDescriptorHeap();
@@ -505,11 +550,20 @@ void Game::Draw(float deltaTime, float totalTime)
 
 			commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}
-	}
+	}*/
+
+	// ============ RAYTRACING ============
+	// Update raytracing accel structure
+	RaytracingHelper::GetInstance().CreateTopLevelAccelerationStructureForScene(entities);
+	RaytracingHelper::GetInstance().Raytrace(camera, backBuffers[currentSwapBuffer]);
+	DX12Helper::GetInstance().WaitForGPU();
+	commandAllocator->Reset();
+	commandList->Reset(commandAllocator.Get(), 0);
 
 	// ============ PRESENTING ============
 	// Present
 	{
+		/*
 		// Transition back to present
 		D3D12_RESOURCE_BARRIER rb = {};
 		rb.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -521,7 +575,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		commandList->ResourceBarrier(1, &rb);
 
 		// Must occur BEFORE present
-		DX12Helper::GetInstance().CloseExecuteAndResetCommandList();
+		DX12Helper::GetInstance().CloseExecuteAndResetCommandList();*/
 
 		// Present the current back buffer
 		bool vsyncNecessary = vsync || !deviceSupportsTearing || isFullscreen;
