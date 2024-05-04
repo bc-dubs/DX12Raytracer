@@ -25,10 +25,19 @@ struct RaytracingSceneData
 	DirectX::XMFLOAT3 cameraPosition;
 };
 
+struct RaytracingMaterialData
+{
+	DirectX::XMFLOAT4 color;
+	int albedoIndex;
+	int roughnessIndex;
+	int normalsIndex;
+	int metalIndex;
+};
+
 // Ensure this matches Raytracing shader define!
 #define MAX_INSTANCES_PER_BLAS 100
 struct RaytracingEntityData
 {
 	DirectX::XMFLOAT4X4 worldInvTranspose[MAX_INSTANCES_PER_BLAS];
-	DirectX::XMFLOAT4 color[MAX_INSTANCES_PER_BLAS];
+	RaytracingMaterialData materialData[MAX_INSTANCES_PER_BLAS];
 };

@@ -16,6 +16,15 @@ struct Vertex
 };
 static const uint VertexSizeInBytes = 11 * 4; // 11 floats total per vertex * 4 bytes each
 
+struct MaterialData
+{
+	float4 color;
+	uint albedoIndex;
+	uint roughnessIndex;
+	uint normalsIndex;
+	uint metalIndex;
+};
+
 
 // Payload for rays (data that is "sent along" with each ray during raytrace)
 // Note: This should be as small as possible
@@ -46,7 +55,7 @@ cbuffer SceneData : register(b0)
 cbuffer ObjectData : register(b1)
 {
 	matrix worldInvTranspose[MAX_INSTANCES_PER_BLAS];
-	float4 entityColor[MAX_INSTANCES_PER_BLAS];
+	MaterialData material[MAX_INSTANCES_PER_BLAS];
 };
 
 
@@ -61,6 +70,9 @@ RaytracingAccelerationStructure SceneTLAS	: register(t0);
 // Geometry buffers
 ByteAddressBuffer IndexBuffer        		: register(t1);
 ByteAddressBuffer VertexBuffer				: register(t2);
+Texture2D textures[]						: register(t3);
+
+SamplerState BasicSampler					: register(s0);
 
 // === Pseudo-random Number Generators ===
 float rand(float2 uv)
@@ -134,12 +146,13 @@ Vertex InterpolateVertices(uint triangleIndex, float3 barycentricData)
 		vert.normal += asfloat(VertexBuffer.Load3(dataIndex)) * barycentricData[i];
 		dataIndex += 3 * 4; // 3 floats * 4 bytes per float
 
-		// Tangent (no offset at the end, since we start over after looping)
+		// Tangent
 		vert.tangent += asfloat(VertexBuffer.Load3(dataIndex)) * barycentricData[i];
+		dataIndex += 3 * 4; // 3 floats * 4 bytes per float
 
-		// UV
+		// UV (no offset at the end, since we start over after looping)
 		vert.uv += asfloat(VertexBuffer.Load2(dataIndex)) * barycentricData[i];
-		dataIndex += 2 * 4; // 2 floats * 4 bytes per float
+		
 	}
 
 	// Final interpolated vertex data is ready
@@ -255,7 +268,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 	// Get the data for this entity
 	uint instanceID = InstanceID();
 	// Adjust tint of payload
-	payload.color *= entityColor[instanceID].rgb;
+	payload.color *= material[instanceID].color.rgb;
 	
 	float3 normal_WS = mul((float3x3)worldInvTranspose[instanceID], interpolatedVert.normal);
 	float3 refl = reflect(WorldRayDirection(), normal_WS); // A perfect reflection across the normal
@@ -266,7 +279,7 @@ void ClosestHit(inout RayPayload payload, BuiltInTriangleIntersectionAttributes 
 	// Set up new ray
 	RayDesc ray;
 	ray.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent(); // Intrinsic functions: the current ray's origin in world coords plus its direction times its T
-	ray.Direction = normalize(lerp(refl, diff, entityColor[InstanceID()].a)); // Working just with specular for now
+	ray.Direction = normalize(lerp(refl, diff, material[InstanceID()].color.a)); // Working just with specular for now
 	ray.TMin = 0.0001f;
 	ray.TMax = 1000.0f;
 

@@ -129,14 +129,26 @@ void RaytracingHelper::CreateRaytracingRootSignatures()
 			rootParams[2].DescriptorTable.pDescriptorRanges = &cbufferRange;
 		}
 
+		// Create a single static sampler (available to all pixel shaders at the same slot)
+		D3D12_STATIC_SAMPLER_DESC anisoWrap = {};
+		anisoWrap.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // Texture wraps when coordinate is outside 0-1 range
+		anisoWrap.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		anisoWrap.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		anisoWrap.Filter = D3D12_FILTER_ANISOTROPIC;
+		anisoWrap.MaxAnisotropy = 16; // High level of max anistropy
+		anisoWrap.MaxLOD = D3D12_FLOAT32_MAX;
+		anisoWrap.ShaderRegister = 0;  // register(s0)
+		anisoWrap.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // Sampler is visible to just PS
+		D3D12_STATIC_SAMPLER_DESC samplers[] = { anisoWrap }; // All samplers in root sig
+
 		// Create the global root signature
 		Microsoft::WRL::ComPtr<ID3DBlob> blob;
 		Microsoft::WRL::ComPtr<ID3DBlob> errors;
 		D3D12_ROOT_SIGNATURE_DESC globalRootSigDesc = {};
 		globalRootSigDesc.NumParameters = ARRAYSIZE(rootParams);
 		globalRootSigDesc.pParameters = rootParams;
-		globalRootSigDesc.NumStaticSamplers = 0;
-		globalRootSigDesc.pStaticSamplers = 0;
+		globalRootSigDesc.NumStaticSamplers = ARRAYSIZE(samplers);
+		globalRootSigDesc.pStaticSamplers = samplers;
 		globalRootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 		D3D12SerializeRootSignature(&globalRootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, blob.GetAddressOf(), errors.GetAddressOf());
@@ -161,8 +173,16 @@ void RaytracingHelper::CreateRaytracingRootSignatures()
 		geometrySRVRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		geometrySRVRange.RegisterSpace = 0;
 
+		// Bindless texture array at register(t3)
+		D3D12_DESCRIPTOR_RANGE texture2DRange{};
+		texture2DRange.BaseShaderRegister = 3;
+		texture2DRange.NumDescriptors = UINT_MAX; // ALL THE DESCRIPTORS
+		texture2DRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		texture2DRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		texture2DRange.RegisterSpace = 0;
+
 		// Two params: Tables for constant buffer and geometry
-		D3D12_ROOT_PARAMETER rootParams[2] = {};
+		D3D12_ROOT_PARAMETER rootParams[3] = {};
 
 		// Constant buffer at register(b1)
 		rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -175,6 +195,12 @@ void RaytracingHelper::CreateRaytracingRootSignatures()
 		rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParams[1].DescriptorTable.pDescriptorRanges = &geometrySRVRange;
+
+		// One SRV for all 2D textures
+		rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+		rootParams[2].DescriptorTable.pDescriptorRanges = &texture2DRange;
 
 		// Create the local root sig (ensure we denote it as a local sig)
 		Microsoft::WRL::ComPtr<ID3DBlob> blob;
@@ -691,8 +717,15 @@ void RaytracingHelper::CreateTopLevelAccelerationStructureForScene(std::vector<s
 		// - mesh index tells us which cbuffer
 		// - instance ID tells us which instance in that cbuffer
 		XMFLOAT3 c = scene[i]->GetMaterial()->GetColorTint();
+		RaytracingMaterialData matData = {};
+		matData.color = XMFLOAT4(c.x, c.y, c.z, (float)((i + 1) % 2));
+		matData.albedoIndex = 0;
+		matData.roughnessIndex = 1;
+		matData.normalsIndex = 2;
+		matData.metalIndex = 3;
+
 		entityData[meshBlasIndex].worldInvTranspose[id.InstanceID] = scene[i]->GetTransform()->GetWorldInverseTransposeMatrix();
-		entityData[meshBlasIndex].color[id.InstanceID] = XMFLOAT4(c.x, c.y, c.z, (float)((i+1) % 2)); // Using alpha channel as "roughness"
+		entityData[meshBlasIndex].materialData[id.InstanceID] = matData; // Using alpha channel as "roughness"
 
 		// On to the next instance for this mesh
 		instanceIDs[meshBlasIndex]++;
